@@ -20,4 +20,8 @@ export const env = {
   dbName: getEnv('DB_NAME'),
   dbUser: getEnv('DB_USER'),
   dbPassword: getEnv('DB_PASSWORD'),
+
+  jwtSecret: getEnv('JWT_SECRET'),
+  jwtExpiresIn: getEnv('JWT_EXPIRES_IN', '1d'),
+
 };

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { authRouter } from '../modules/auth/auth.routes';
 
 const router = Router();
 
@@ -8,5 +9,7 @@ router.get('/health', (_req, res) => {
     message: 'API is running',
   });
 });
+
+router.use('/auth', authRouter);
 
 export { router };
