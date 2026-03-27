@@ -13,6 +13,10 @@ export function Sidebar() {
           Dashboard
         </NavLink>
 
+        <NavLink to={ROUTES.profile} className="sidebar__link">
+          My Profile
+        </NavLink>
+
         {user?.role === 'admin' && (
           <NavLink to={ROUTES.users} className="sidebar__link">
             Users

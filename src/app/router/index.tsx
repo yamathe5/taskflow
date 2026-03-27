@@ -4,6 +4,7 @@ import { AppLayout } from '../layouts/AppLayout';
 import { LoginPage } from '../../modules/auth/pages/LoginPage';
 import { ProjectsPage } from '../../modules/projects/pages/ProjectsPage';
 import { TasksPage } from '../../modules/tasks/pages/TasksPage';
+import { ProfilePage } from '../../modules/users/pages/ProfilePage';
 import { UsersPage } from '../../modules/users/pages/UsersPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { NotFoundPage } from '../../pages/NotFoundPage';
@@ -61,6 +62,10 @@ export const router = createBrowserRouter([
           {
             index: true,
             element: <DashboardPage />,
+          },
+          {
+            path: ROUTES.profile.slice(1),
+            element: <ProfilePage />,
           },
           {
             element: <RoleProtectedRoute allowedRoles={['admin']} />,

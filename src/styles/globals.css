@@ -1,9 +1,24 @@
 :root {
   font-family: Inter, system-ui, Arial, sans-serif;
-  color: #111827;
-  background: #f3f4f6;
-}
 
+  --color-primary: #db00f8;
+  --color-accent: #90ff3c;
+  --color-bg: #f6f6f8;
+  --color-surface: #ffffff;
+  --color-text: #111111;
+  --color-text-soft: #5f6368;
+  --color-border: #e5e7eb;
+  --color-dark: #000000;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+  --color-success: #db00f8;
+  --color-success-soft: rgba(219, 0, 248, 0.1);
+  --color-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --color-focus: rgba(219, 0, 248, 0.15);
+
+  color: var(--color-text);
+  background: var(--color-bg);
+}
 * {
   box-sizing: border-box;
 }
@@ -624,4 +639,137 @@ input {
 
 .page-grid--two-columns > * {
   min-width: 0;
+}
+
+.page-section__header--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  .page-section__header--row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.auth-card,
+.page-card,
+.table-card,
+.stat-card,
+.modal-card {
+  background: var(--color-surface);
+  box-shadow: var(--color-shadow);
+}
+
+.button {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: var(--color-primary);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.button--secondary {
+  background: var(--color-dark);
+  color: #ffffff;
+}
+
+.button--success {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.button--danger {
+  background: var(--color-dark);
+  color: #ffffff;
+}
+
+.navbar {
+  background: var(--color-dark);
+  color: #ffffff;
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.sidebar {
+  background: #0a0a0a;
+  color: #ffffff;
+}
+
+.sidebar__link.active {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.form-group input,
+.form-group select,
+.entity-form textarea,
+.status-select {
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  background: #ffffff;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.entity-form textarea:focus,
+.status-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-focus);
+}
+
+.page-section__header p,
+.muted-text,
+.stat-card__label,
+.dashboard-activity-list p {
+  color: var(--color-text-soft);
+}
+
+.server-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.success-message {
+  background: var(--color-success-soft);
+  color: var(--color-primary);
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 16px;
+}
+
+.status-badge--active,
+.status-badge--done {
+  background: rgba(144, 255, 60, 0.14);
+  color: #3f7d12;
+}
+
+.status-badge--archived,
+.status-badge--todo {
+  background: #f1f1f3;
+  color: #4b5563;
+}
+
+.status-badge--in-progress {
+  background: rgba(219, 0, 248, 0.1);
+  color: #9c00b2;
+}
+
+.status-badge--in-review {
+  background: rgba(0, 0, 0, 0.08);
+  color: #111111;
 }
