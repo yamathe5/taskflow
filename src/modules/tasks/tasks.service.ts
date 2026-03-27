@@ -31,12 +31,6 @@ export type PublicTask = {
   updatedAt: Date;
 };
 
-const allowedStatusTransitions: Record<TaskStatus, TaskStatus[]> = {
-  todo: ['in_progress'],
-  in_progress: ['in_review'],
-  in_review: ['done'],
-  done: [],
-};
 
 export class TasksService {
   constructor(
@@ -89,11 +83,7 @@ export class TasksService {
     }
 
     if (input.assignedTo !== undefined && input.assignedTo !== null) {
-      const assignedUser = await this.usersRepository.findActiveById(input.assignedTo);
-
-      if (!assignedUser) {
-        throw new AppError('Assigned user not found', 404);
-      }
+      await this.assertAssignableDeveloper(input.assignedTo);
     }
 
     const task = await this.tasksRepository.createTask({
@@ -123,11 +113,7 @@ export class TasksService {
     await this.assertTaskEditAccess(existingTask, currentUser);
 
     if (input.assignedTo !== undefined && input.assignedTo !== null) {
-      const assignedUser = await this.usersRepository.findActiveById(input.assignedTo);
-
-      if (!assignedUser) {
-        throw new AppError('Assigned user not found', 404);
-      }
+      await this.assertAssignableDeveloper(input.assignedTo);
     }
 
     if (
@@ -175,15 +161,6 @@ export class TasksService {
 
     if (existingTask.status === input.status) {
       throw new AppError('Task already has this status', 400);
-    }
-
-    const allowedNextStatuses = allowedStatusTransitions[existingTask.status];
-
-    if (!allowedNextStatuses.includes(input.status)) {
-      throw new AppError(
-        `Invalid status transition from ${existingTask.status} to ${input.status}`,
-        400,
-      );
     }
 
     const updatedTask = await this.tasksRepository.updateTaskStatus(id, input.status);
@@ -275,6 +252,18 @@ export class TasksService {
 
     if (!project || Number(project.ownerId) !== currentUser.userId) {
       throw new AppError('You do not have permission to change this task status', 403);
+    }
+  }
+
+  private async assertAssignableDeveloper(userId: number): Promise<void> {
+    const assignedUser = await this.usersRepository.findActiveById(userId);
+
+    if (!assignedUser) {
+      throw new AppError('Assigned user not found', 404);
+    }
+
+    if (assignedUser.role !== 'developer') {
+      throw new AppError('Tasks can only be assigned to developer users', 400);
     }
   }
 
