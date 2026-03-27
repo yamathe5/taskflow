@@ -1,11 +1,16 @@
 import type { Request, Response } from 'express';
 
+import { AppError } from '../../shared/errors/app-error';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { tasksService } from './tasks.service';
 
 class TasksController {
-  listTasks = asyncHandler(async (_req: Request, res: Response) => {
-    const tasks = await tasksService.listTasks();
+  listTasks = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
+    const tasks = await tasksService.listTasks(req.user);
 
     res.status(200).json({
       success: true,
@@ -15,8 +20,12 @@ class TasksController {
   });
 
   getTaskById = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
     const taskId = Number(req.params.id);
-    const task = await tasksService.getTaskById(taskId);
+    const task = await tasksService.getTaskById(taskId, req.user);
 
     res.status(200).json({
       success: true,
@@ -26,8 +35,11 @@ class TasksController {
   });
 
   createTask = asyncHandler(async (req: Request, res: Response) => {
-    const createdBy = req.user!.userId;
-    const task = await tasksService.createTask(req.body, createdBy);
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
+    const task = await tasksService.createTask(req.body, req.user);
 
     res.status(201).json({
       success: true,
@@ -37,8 +49,12 @@ class TasksController {
   });
 
   updateTask = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
     const taskId = Number(req.params.id);
-    const task = await tasksService.updateTask(taskId, req.body);
+    const task = await tasksService.updateTask(taskId, req.body, req.user);
 
     res.status(200).json({
       success: true,
@@ -48,8 +64,12 @@ class TasksController {
   });
 
   updateTaskStatus = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
     const taskId = Number(req.params.id);
-    const task = await tasksService.updateTaskStatus(taskId, req.body);
+    const task = await tasksService.updateTaskStatus(taskId, req.body, req.user);
 
     res.status(200).json({
       success: true,
@@ -59,8 +79,12 @@ class TasksController {
   });
 
   deleteTask = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
     const taskId = Number(req.params.id);
-    await tasksService.deleteTask(taskId);
+    await tasksService.deleteTask(taskId, req.user);
 
     res.status(200).json({
       success: true,
