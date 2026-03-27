@@ -8,6 +8,7 @@ type ProjectTableProps = {
   isDeleting: boolean;
   onEdit: (project: Project) => void;
   onArchive: (projectId: number) => Promise<void>;
+  onRestore: (projectId: number) => Promise<void>;
   onDelete: (projectId: number) => Promise<void>;
 };
 
@@ -19,6 +20,7 @@ export function ProjectTable({
   isDeleting,
   onEdit,
   onArchive,
+  onRestore,
   onDelete,
 }: ProjectTableProps) {
   return (
@@ -53,6 +55,7 @@ export function ProjectTable({
               </td>
               <td>{project.ownerId}</td>
               <td>{project.description ?? 'No description'}</td>
+
               {(canManageProjects || canDeleteProjects) && (
                 <td className="table-actions">
                   {canManageProjects && (
@@ -65,7 +68,7 @@ export function ProjectTable({
                         Edit
                       </button>
 
-                      {project.status !== 'archived' && (
+                      {project.status === 'active' ? (
                         <button
                           className="button button--small"
                           type="button"
@@ -73,6 +76,15 @@ export function ProjectTable({
                           onClick={() => void onArchive(project.id)}
                         >
                           Archive
+                        </button>
+                      ) : (
+                        <button
+                          className="button button--small button--success"
+                          type="button"
+                          disabled={isArchiving}
+                          onClick={() => void onRestore(project.id)}
+                        >
+                          Restore
                         </button>
                       )}
                     </>

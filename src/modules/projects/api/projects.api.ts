@@ -7,7 +7,7 @@ type CreateProjectPayload = {
 };
 
 type UpdateProjectPayload = {
-  name: string;
+  name?: string;
   description?: string | null;
   status?: 'active' | 'archived';
 };
@@ -51,6 +51,16 @@ export async function archiveProject(
 ): Promise<SingleProjectResponse> {
   const response = await apiClient.patch<SingleProjectResponse>(
     `/projects/${projectId}/archive`,
+  );
+  return response.data;
+}
+
+export async function restoreProject(
+  projectId: number,
+): Promise<SingleProjectResponse> {
+  const response = await apiClient.patch<SingleProjectResponse>(
+    `/projects/${projectId}`,
+    { status: 'active' },
   );
   return response.data;
 }

@@ -1,11 +1,14 @@
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { useEffect, useMemo, useState } from 'react';
 
+import { Modal } from '../../../shared/components/ui/Modal';
 import {
   archiveProject,
   createProject,
   deleteProject,
   getProjects,
+  restoreProject,
   updateProject,
 } from '../api/projects.api';
 import { ProjectForm } from '../components/ProjectForm';
@@ -40,15 +43,18 @@ function getCurrentUserRole(): UserRole | null {
 export function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState('');
   const [createErrorMessage, setCreateErrorMessage] = useState('');
   const [updateErrorMessage, setUpdateErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   const userRole = useMemo(() => getCurrentUserRole(), []);
   const canCreateProject =
@@ -81,19 +87,36 @@ export function ProjectsPage() {
     void loadProjects();
   }, []);
 
+  const showSuccess = async (title: string) => {
+    await Swal.fire({
+      icon: 'success',
+      title,
+      timer: 1600,
+      showConfirmButton: false,
+    });
+  };
+
+  const showError = async (message: string) => {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Something went wrong',
+      text: message,
+    });
+  };
+
   const handleCreateProject = async (values: CreateProjectFormValues) => {
     try {
       setIsCreating(true);
       setCreateErrorMessage('');
-      setSuccessMessage('');
 
       await createProject({
         name: values.name,
         description: values.description?.trim() ? values.description.trim() : null,
       });
 
-      setSuccessMessage('Project created successfully.');
+      setIsCreateModalOpen(false);
       await loadProjects();
+      await showSuccess('Project created successfully');
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setCreateErrorMessage(
@@ -107,6 +130,12 @@ export function ProjectsPage() {
     }
   };
 
+  const handleOpenEdit = (project: Project) => {
+    setEditingProject(project);
+    setUpdateErrorMessage('');
+    setIsEditModalOpen(true);
+  };
+
   const handleUpdateProject = async (values: CreateProjectFormValues) => {
     if (!editingProject) {
       return;
@@ -115,16 +144,16 @@ export function ProjectsPage() {
     try {
       setIsUpdating(true);
       setUpdateErrorMessage('');
-      setSuccessMessage('');
 
       await updateProject(editingProject.id, {
         name: values.name,
         description: values.description?.trim() ? values.description.trim() : null,
       });
 
-      setSuccessMessage('Project updated successfully.');
       setEditingProject(null);
+      setIsEditModalOpen(false);
       await loadProjects();
+      await showSuccess('Project updated successfully');
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setUpdateErrorMessage(
@@ -139,27 +168,61 @@ export function ProjectsPage() {
   };
 
   const handleArchiveProject = async (projectId: number) => {
-    const confirmed = window.confirm('Are you sure you want to archive this project?');
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Archive project?',
+      text: 'You can restore it later.',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, archive it',
+      cancelButtonText: 'Cancel',
+    });
 
-    if (!confirmed) {
+    if (!result.isConfirmed) {
       return;
     }
 
     try {
       setIsArchiving(true);
-      setSuccessMessage('');
 
       await archiveProject(projectId);
-
-      setSuccessMessage('Project archived successfully.');
       await loadProjects();
+      await showSuccess('Project archived successfully');
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        setErrorMessage(
-          error.response?.data?.message ?? 'Unable to archive project.',
-        );
+        await showError(error.response?.data?.message ?? 'Unable to archive project.');
       } else {
-        setErrorMessage('Unexpected error while archiving project.');
+        await showError('Unexpected error while archiving project.');
+      }
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleRestoreProject = async (projectId: number) => {
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Restore project?',
+      text: 'The project will become active again.',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, restore it',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    try {
+      setIsArchiving(true);
+
+      await restoreProject(projectId);
+      await loadProjects();
+      await showSuccess('Project restored successfully');
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        await showError(error.response?.data?.message ?? 'Unable to restore project.');
+      } else {
+        await showError('Unexpected error while restoring project.');
       }
     } finally {
       setIsArchiving(false);
@@ -167,31 +230,37 @@ export function ProjectsPage() {
   };
 
   const handleDeleteProject = async (projectId: number) => {
-    const confirmed = window.confirm('Are you sure you want to delete this project?');
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Delete project?',
+      text: 'This action cannot be undone.',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#b91c1c',
+    });
 
-    if (!confirmed) {
+    if (!result.isConfirmed) {
       return;
     }
 
     try {
       setIsDeleting(true);
-      setSuccessMessage('');
 
       await deleteProject(projectId);
 
       if (editingProject?.id === projectId) {
         setEditingProject(null);
+        setIsEditModalOpen(false);
       }
 
-      setSuccessMessage('Project deleted successfully.');
       await loadProjects();
+      await showSuccess('Project deleted successfully');
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        setErrorMessage(
-          error.response?.data?.message ?? 'Unable to delete project.',
-        );
+        await showError(error.response?.data?.message ?? 'Unable to delete project.');
       } else {
-        setErrorMessage('Unexpected error while deleting project.');
+        await showError('Unexpected error while deleting project.');
       }
     } finally {
       setIsDeleting(false);
@@ -218,51 +287,25 @@ export function ProjectsPage() {
 
   return (
     <div className="page-section">
-      <div className="page-section__header">
-        <h2>Projects</h2>
-        <p>Manage and review registered projects.</p>
-      </div>
-
-      {successMessage && <div className="success-message">{successMessage}</div>}
-
-      {canCreateProject && (
-        <div className="page-grid page-grid--two-columns">
-          <div className="page-card">
-            <h3>Create project</h3>
-            <p className="muted-text">
-              Only admin and project manager roles can create projects.
-            </p>
-
-            <ProjectForm
-              mode="create"
-              onSubmit={handleCreateProject}
-              isSubmitting={isCreating}
-              serverError={createErrorMessage}
-            />
-          </div>
-
-          <div className="page-card">
-            <h3>Edit project</h3>
-            <p className="muted-text">
-              {editingProject
-                ? `Editing project #${editingProject.id}`
-                : 'Select a project from the table to edit.'}
-            </p>
-
-            {editingProject ? (
-              <ProjectForm
-                mode="edit"
-                initialValues={editingProject}
-                onSubmit={handleUpdateProject}
-                isSubmitting={isUpdating}
-                serverError={updateErrorMessage}
-              />
-            ) : (
-              <p className="muted-text">No project selected.</p>
-            )}
-          </div>
+      <div className="page-section__header page-section__header--row">
+        <div>
+          <h2>Projects</h2>
+          <p>Manage and review registered projects.</p>
         </div>
-      )}
+
+        {canCreateProject && (
+          <button
+            className="button"
+            type="button"
+            onClick={() => {
+              setCreateErrorMessage('');
+              setIsCreateModalOpen(true);
+            }}
+          >
+            Create project
+          </button>
+        )}
+      </div>
 
       {projects.length === 0 ? (
         <div className="page-card">
@@ -275,11 +318,44 @@ export function ProjectsPage() {
           canDeleteProjects={canDeleteProjects}
           isArchiving={isArchiving}
           isDeleting={isDeleting}
-          onEdit={setEditingProject}
+          onEdit={handleOpenEdit}
           onArchive={handleArchiveProject}
+          onRestore={handleRestoreProject}
           onDelete={handleDeleteProject}
         />
       )}
+
+      <Modal
+        title="Create project"
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      >
+        <ProjectForm
+          mode="create"
+          onSubmit={handleCreateProject}
+          isSubmitting={isCreating}
+          serverError={createErrorMessage}
+        />
+      </Modal>
+
+      <Modal
+        title="Edit project"
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setEditingProject(null);
+          setIsEditModalOpen(false);
+        }}
+      >
+        {editingProject && (
+          <ProjectForm
+            mode="edit"
+            initialValues={editingProject}
+            onSubmit={handleUpdateProject}
+            isSubmitting={isUpdating}
+            serverError={updateErrorMessage}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
