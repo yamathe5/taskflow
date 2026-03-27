@@ -90,6 +90,13 @@ export class UsersService {
       updatedAt: user.updatedAt,
     };
   }
+
+  async listDevelopers(): Promise<PublicUser[]> {
+    const users = await this.usersRepository.findAllActive();
+    return users
+      .filter((user) => user.role === 'developer')
+      .map((user) => this.toPublicUser(user));
+  }
 }
 
 const usersRepository = new UsersRepository();

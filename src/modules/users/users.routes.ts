@@ -9,11 +9,16 @@ import { updateUserSchema, userIdParamSchema } from './users.schema';
 const usersRouter = Router();
 
 usersRouter.use(authenticate);
-usersRouter.use(authorize('admin'));
 
-usersRouter.get('/', usersController.listUsers);
-usersRouter.get('/:id', validate(userIdParamSchema), usersController.getUserById);
-usersRouter.patch('/:id', validate(updateUserSchema), usersController.updateUser);
-usersRouter.delete('/:id', validate(userIdParamSchema), usersController.softDeleteUser);
+usersRouter.get(
+  '/assignable',
+  authorize('admin', 'project_manager'),
+  usersController.listAssignableUsers,
+);
+
+usersRouter.get('/', authorize('admin'), usersController.listUsers);
+usersRouter.get('/:id', authorize('admin'), validate(userIdParamSchema), usersController.getUserById);
+usersRouter.patch('/:id', authorize('admin'), validate(updateUserSchema), usersController.updateUser);
+usersRouter.delete('/:id', authorize('admin'), validate(userIdParamSchema), usersController.softDeleteUser);
 
 export { usersRouter };

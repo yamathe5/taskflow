@@ -45,6 +45,16 @@ class UsersController {
       message: 'User deleted successfully',
     });
   });
+  
+listAssignableUsers = asyncHandler(async (_req: Request, res: Response) => {
+    const users = await usersService.listDevelopers();
+
+    res.status(200).json({
+      success: true,
+      message: 'Assignable users retrieved successfully',
+      data: users,
+    });
+  });
 }
 
 export const usersController = new UsersController();
