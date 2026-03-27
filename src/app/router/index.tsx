@@ -5,6 +5,7 @@ import { LoginPage } from '../../modules/auth/pages/LoginPage';
 import { ProjectsPage } from '../../modules/projects/pages/ProjectsPage';
 import { TasksPage } from '../../modules/tasks/pages/TasksPage';
 import { UsersPage } from '../../modules/users/pages/UsersPage';
+import { DashboardPage } from '../../pages/DashboardPage';
 import { NotFoundPage } from '../../pages/NotFoundPage';
 import { ROUTES } from '../../shared/constants/routes';
 
@@ -45,15 +46,6 @@ function RoleProtectedRoute({ allowedRoles }: { allowedRoles: Role[] }) {
   }
 }
 
-function DashboardPage() {
-  return (
-    <div className="page-card">
-      <h2>Dashboard</h2>
-      <p>Welcome to TaskFlow Pro.</p>
-    </div>
-  );
-}
-
 export const router = createBrowserRouter([
   {
     path: ROUTES.login,
@@ -80,7 +72,11 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RoleProtectedRoute allowedRoles={['admin', 'project_manager', 'developer']} />,
+            element: (
+              <RoleProtectedRoute
+                allowedRoles={['admin', 'project_manager', 'developer']}
+              />
+            ),
             children: [
               {
                 path: ROUTES.projects.slice(1),
@@ -89,9 +85,11 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RoleProtectedRoute
-              allowedRoles={['admin', 'project_manager', 'developer']}
-            />,
+            element: (
+              <RoleProtectedRoute
+                allowedRoles={['admin', 'project_manager', 'developer']}
+              />
+            ),
             children: [
               {
                 path: ROUTES.tasks.slice(1),
