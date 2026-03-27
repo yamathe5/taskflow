@@ -1,36 +1,29 @@
 import type { NextFunction, Request, Response } from 'express';
-import { ZodError } from 'zod';
 
 import { AppError } from './app-error';
+import { errorResponse } from '../utils/api-response';
 
 export function errorHandler(
   error: Error,
   _req: Request,
   res: Response,
   _next: NextFunction,
-): Response {
+): void {
   if (error instanceof AppError) {
-    return res.status(error.statusCode).json({
-      success: false,
-      message: error.message,
-    });
-  }
-
-  if (error instanceof ZodError) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      errors: error.issues.map((issue) => ({
-        field: issue.path.join('.'),
-        message: issue.message,
-      })),
-    });
+    res.status(error.statusCode).json(
+      errorResponse({
+        message: error.message,
+        errors: error.errors,
+      }),
+    );
+    return;
   }
 
   console.error('Unhandled error:', error);
 
-  return res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-  });
+  res.status(500).json(
+    errorResponse({
+      message: 'Internal server error',
+    }),
+  );
 }
