@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { authRouter } from '../modules/auth/auth.routes';
 import { usersRouter } from '../modules/users/users.routes';
 import { projectsRouter } from '../modules/projects/projects.routes';
+import { tasksRouter } from '../modules/tasks/tasks.routes';
 
 import { authenticate } from '../shared/middleware/auth.middleware';
 import { authorize } from '../shared/middleware/role.middleware';
@@ -19,7 +20,7 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRouter);
 router.use('/users', usersRouter);
 router.use('/projects', projectsRouter);
-
+router.use('/tasks', tasksRouter);
 
 router.get('/me', authenticate, (req, res) => {
   res.status(200).json({
