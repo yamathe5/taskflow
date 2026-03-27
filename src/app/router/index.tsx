@@ -8,6 +8,8 @@ import { UsersPage } from '../../modules/users/pages/UsersPage';
 import { NotFoundPage } from '../../pages/NotFoundPage';
 import { ROUTES } from '../../shared/constants/routes';
 
+type Role = 'admin' | 'project_manager' | 'developer';
+
 function ProtectedRoute() {
   const token = localStorage.getItem('auth_token');
 
@@ -16,6 +18,31 @@ function ProtectedRoute() {
   }
 
   return <Outlet />;
+}
+
+function RoleProtectedRoute({ allowedRoles }: { allowedRoles: Role[] }) {
+  const authData = localStorage.getItem('auth_data');
+
+  if (!authData) {
+    return <Navigate to={ROUTES.login} replace />;
+  }
+
+  try {
+    const parsedAuthData = JSON.parse(authData) as {
+      token: string | null;
+      user: { role: Role } | null;
+    };
+
+    const userRole = parsedAuthData.user?.role;
+
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return <Navigate to={ROUTES.dashboard} replace />;
+    }
+
+    return <Outlet />;
+  } catch {
+    return <Navigate to={ROUTES.login} replace />;
+  }
 }
 
 function DashboardPage() {
@@ -44,16 +71,33 @@ export const router = createBrowserRouter([
             element: <DashboardPage />,
           },
           {
-            path: ROUTES.users.slice(1),
-            element: <UsersPage />,
+            element: <RoleProtectedRoute allowedRoles={['admin']} />,
+            children: [
+              {
+                path: ROUTES.users.slice(1),
+                element: <UsersPage />,
+              },
+            ],
           },
           {
-            path: ROUTES.projects.slice(1),
-            element: <ProjectsPage />,
+            element: <RoleProtectedRoute allowedRoles={['admin', 'project_manager']} />,
+            children: [
+              {
+                path: ROUTES.projects.slice(1),
+                element: <ProjectsPage />,
+              },
+            ],
           },
           {
-            path: ROUTES.tasks.slice(1),
-            element: <TasksPage />,
+            element: <RoleProtectedRoute
+              allowedRoles={['admin', 'project_manager', 'developer']}
+            />,
+            children: [
+              {
+                path: ROUTES.tasks.slice(1),
+                element: <TasksPage />,
+              },
+            ],
           },
         ],
       },
