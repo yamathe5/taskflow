@@ -19,7 +19,9 @@ export function Sidebar() {
           </NavLink>
         )}
 
-        {(user?.role === 'admin' || user?.role === 'project_manager') && (
+        {(user?.role === 'admin' ||
+          user?.role === 'project_manager' ||
+          user?.role === 'developer') && (
           <NavLink to={ROUTES.projects} className="sidebar__link">
             Projects
           </NavLink>

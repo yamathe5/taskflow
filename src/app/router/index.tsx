@@ -80,7 +80,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RoleProtectedRoute allowedRoles={['admin', 'project_manager']} />,
+            element: <RoleProtectedRoute allowedRoles={['admin', 'project_manager', 'developer']} />,
             children: [
               {
                 path: ROUTES.projects.slice(1),
