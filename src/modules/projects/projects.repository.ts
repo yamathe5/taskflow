@@ -71,6 +71,46 @@ export class ProjectsRepository {
     return result.rows;
   }
 
+  async findByOwnerId(ownerId: number): Promise<ProjectRow[]> {
+    const query = `
+      SELECT
+        id,
+        name,
+        description,
+        status,
+        owner_id AS "ownerId",
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM projects
+      WHERE owner_id = $1
+      ORDER BY id ASC;
+    `;
+
+    const result: QueryResult<ProjectRow> = await pool.query(query, [ownerId]);
+    return result.rows;
+  }
+
+  async findAssignedToDeveloper(userId: number): Promise<ProjectRow[]> {
+    const query = `
+      SELECT DISTINCT
+        p.id,
+        p.name,
+        p.description,
+        p.status,
+        p.owner_id AS "ownerId",
+        p.created_at AS "createdAt",
+        p.updated_at AS "updatedAt"
+      FROM projects p
+      INNER JOIN tasks t
+        ON t.project_id = p.id
+      WHERE t.assigned_to = $1
+      ORDER BY p.id ASC;
+    `;
+
+    const result: QueryResult<ProjectRow> = await pool.query(query, [userId]);
+    return result.rows;
+  }
+
   async findById(id: number): Promise<ProjectRow | null> {
     const query = `
       SELECT
@@ -88,6 +128,19 @@ export class ProjectsRepository {
 
     const result: QueryResult<ProjectRow> = await pool.query(query, [id]);
     return result.rows[0] ?? null;
+  }
+
+  async existsDeveloperAssignment(projectId: number, userId: number): Promise<boolean> {
+    const query = `
+      SELECT 1
+      FROM tasks
+      WHERE project_id = $1
+        AND assigned_to = $2
+      LIMIT 1;
+    `;
+
+    const result = await pool.query(query, [projectId, userId]);
+    return (result.rowCount ?? 0) > 0;
   }
 
   async updateProject(params: UpdateProjectParams): Promise<ProjectRow> {

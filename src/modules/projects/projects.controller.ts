@@ -15,8 +15,11 @@ class ProjectsController {
     });
   });
 
-  listProjects = asyncHandler(async (_req: Request, res: Response) => {
-    const projects = await projectsService.listProjects();
+  listProjects = asyncHandler(async (req: Request, res: Response) => {
+    const projects = await projectsService.listProjects({
+      userId: req.user!.userId,
+      role: req.user!.role,
+    });
 
     res.status(200).json({
       success: true,
@@ -27,7 +30,10 @@ class ProjectsController {
 
   getProjectById = asyncHandler(async (req: Request, res: Response) => {
     const projectId = Number(req.params.id);
-    const project = await projectsService.getProjectById(projectId);
+    const project = await projectsService.getProjectById(projectId, {
+      userId: req.user!.userId,
+      role: req.user!.role,
+    });
 
     res.status(200).json({
       success: true,

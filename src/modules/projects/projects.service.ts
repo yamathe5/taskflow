@@ -2,6 +2,8 @@ import { AppError } from '../../shared/errors/app-error';
 import type { CreateProjectInput, UpdateProjectInput } from './projects.schema';
 import { ProjectsRepository, type ProjectRow } from './projects.repository';
 
+type ProjectRole = 'admin' | 'project_manager' | 'developer';
+
 export type PublicProject = {
   id: number;
   name: string;
@@ -25,16 +27,55 @@ export class ProjectsService {
     return this.toPublicProject(project);
   }
 
-  async listProjects(): Promise<PublicProject[]> {
-    const projects = await this.projectsRepository.findAll();
+  async listProjects(currentUser: {
+    userId: number;
+    role: ProjectRole;
+  }): Promise<PublicProject[]> {
+    let projects: ProjectRow[] = [];
+
+    if (currentUser.role === 'admin') {
+      projects = await this.projectsRepository.findAll();
+    } else if (currentUser.role === 'project_manager') {
+      projects = await this.projectsRepository.findByOwnerId(currentUser.userId);
+    } else {
+      projects = await this.projectsRepository.findAssignedToDeveloper(currentUser.userId);
+    }
+
     return projects.map((project) => this.toPublicProject(project));
   }
 
-  async getProjectById(id: number): Promise<PublicProject> {
+  async getProjectById(
+    id: number,
+    currentUser: {
+      userId: number;
+      role: ProjectRole;
+    },
+  ): Promise<PublicProject> {
     const project = await this.projectsRepository.findById(id);
 
     if (!project) {
       throw new AppError('Project not found', 404);
+    }
+
+    if (currentUser.role === 'admin') {
+      return this.toPublicProject(project);
+    }
+
+    if (currentUser.role === 'project_manager') {
+      if (Number(project.ownerId) !== currentUser.userId) {
+        throw new AppError('You do not have permission to access this project', 403);
+      }
+
+      return this.toPublicProject(project);
+    }
+
+    const hasAssignedTask = await this.projectsRepository.existsDeveloperAssignment(
+      id,
+      currentUser.userId,
+    );
+
+    if (!hasAssignedTask) {
+      throw new AppError('You do not have permission to access this project', 403);
     }
 
     return this.toPublicProject(project);

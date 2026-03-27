@@ -15,31 +15,40 @@ const projectsRouter = Router();
 
 projectsRouter.use(authenticate);
 
-projectsRouter.get('/', authorize('admin', 'project_manager'), projectsController.listProjects);
+projectsRouter.get(
+  '/',
+  authorize('admin', 'project_manager', 'developer'),
+  projectsController.listProjects,
+);
+
 projectsRouter.get(
   '/:id',
-  authorize('admin', 'project_manager'),
+  authorize('admin', 'project_manager', 'developer'),
   validate(projectIdParamSchema),
   projectsController.getProjectById,
 );
+
 projectsRouter.post(
   '/',
   authorize('admin', 'project_manager'),
   validate(createProjectSchema),
   projectsController.createProject,
 );
+
 projectsRouter.patch(
   '/:id',
   authorize('admin', 'project_manager'),
   validate(updateProjectSchema),
   projectsController.updateProject,
 );
+
 projectsRouter.patch(
   '/:id/archive',
   authorize('admin', 'project_manager'),
   validate(archiveProjectSchema),
   projectsController.archiveProject,
 );
+
 projectsRouter.delete(
   '/:id',
   authorize('admin'),
