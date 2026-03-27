@@ -26,7 +26,7 @@ TaskFlow Pro is a full-stack task and project management application built for t
 
 - Node.js 20+
 - npm 10+
-- PostgreSQL 14+
+- PostgreSQL 16+
 
 ## Project Structure
 
