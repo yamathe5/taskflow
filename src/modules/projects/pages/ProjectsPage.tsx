@@ -1,7 +1,13 @@
 import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 
-import { createProject, getProjects } from '../api/projects.api';
+import {
+  archiveProject,
+  createProject,
+  deleteProject,
+  getProjects,
+  updateProject,
+} from '../api/projects.api';
 import { ProjectForm } from '../components/ProjectForm';
 import { ProjectTable } from '../components/ProjectTable';
 import type { CreateProjectFormValues } from '../schemas/project.schema';
@@ -33,15 +39,23 @@ function getCurrentUserRole(): UserRole | null {
 
 export function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [createErrorMessage, setCreateErrorMessage] = useState('');
+  const [updateErrorMessage, setUpdateErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
   const userRole = useMemo(() => getCurrentUserRole(), []);
   const canCreateProject =
     userRole === 'admin' || userRole === 'project_manager';
+  const canManageProjects =
+    userRole === 'admin' || userRole === 'project_manager';
+  const canDeleteProjects = userRole === 'admin';
 
   const loadProjects = async () => {
     try {
@@ -93,6 +107,97 @@ export function ProjectsPage() {
     }
   };
 
+  const handleUpdateProject = async (values: CreateProjectFormValues) => {
+    if (!editingProject) {
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setUpdateErrorMessage('');
+      setSuccessMessage('');
+
+      await updateProject(editingProject.id, {
+        name: values.name,
+        description: values.description?.trim() ? values.description.trim() : null,
+      });
+
+      setSuccessMessage('Project updated successfully.');
+      setEditingProject(null);
+      await loadProjects();
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setUpdateErrorMessage(
+          error.response?.data?.message ?? 'Unable to update project.',
+        );
+      } else {
+        setUpdateErrorMessage('Unexpected error while updating project.');
+      }
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleArchiveProject = async (projectId: number) => {
+    const confirmed = window.confirm('Are you sure you want to archive this project?');
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsArchiving(true);
+      setSuccessMessage('');
+
+      await archiveProject(projectId);
+
+      setSuccessMessage('Project archived successfully.');
+      await loadProjects();
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setErrorMessage(
+          error.response?.data?.message ?? 'Unable to archive project.',
+        );
+      } else {
+        setErrorMessage('Unexpected error while archiving project.');
+      }
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: number) => {
+    const confirmed = window.confirm('Are you sure you want to delete this project?');
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setSuccessMessage('');
+
+      await deleteProject(projectId);
+
+      if (editingProject?.id === projectId) {
+        setEditingProject(null);
+      }
+
+      setSuccessMessage('Project deleted successfully.');
+      await loadProjects();
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setErrorMessage(
+          error.response?.data?.message ?? 'Unable to delete project.',
+        );
+      } else {
+        setErrorMessage('Unexpected error while deleting project.');
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="page-card">
@@ -102,7 +207,7 @@ export function ProjectsPage() {
     );
   }
 
-  if (errorMessage) {
+  if (errorMessage && !canManageProjects && !canDeleteProjects) {
     return (
       <div className="page-card">
         <h2>Projects</h2>
@@ -118,20 +223,44 @@ export function ProjectsPage() {
         <p>Manage and review registered projects.</p>
       </div>
 
+      {successMessage && <div className="success-message">{successMessage}</div>}
+
       {canCreateProject && (
-        <div className="page-card">
-          <h3>Create project</h3>
-          <p className="muted-text">
-            Only admin and project manager roles can create projects.
-          </p>
+        <div className="page-grid page-grid--two-columns">
+          <div className="page-card">
+            <h3>Create project</h3>
+            <p className="muted-text">
+              Only admin and project manager roles can create projects.
+            </p>
 
-          {successMessage && <div className="success-message">{successMessage}</div>}
+            <ProjectForm
+              mode="create"
+              onSubmit={handleCreateProject}
+              isSubmitting={isCreating}
+              serverError={createErrorMessage}
+            />
+          </div>
 
-          <ProjectForm
-            onSubmit={handleCreateProject}
-            isSubmitting={isCreating}
-            serverError={createErrorMessage}
-          />
+          <div className="page-card">
+            <h3>Edit project</h3>
+            <p className="muted-text">
+              {editingProject
+                ? `Editing project #${editingProject.id}`
+                : 'Select a project from the table to edit.'}
+            </p>
+
+            {editingProject ? (
+              <ProjectForm
+                mode="edit"
+                initialValues={editingProject}
+                onSubmit={handleUpdateProject}
+                isSubmitting={isUpdating}
+                serverError={updateErrorMessage}
+              />
+            ) : (
+              <p className="muted-text">No project selected.</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -140,7 +269,16 @@ export function ProjectsPage() {
           <p>No projects found.</p>
         </div>
       ) : (
-        <ProjectTable projects={projects} />
+        <ProjectTable
+          projects={projects}
+          canManageProjects={canManageProjects}
+          canDeleteProjects={canDeleteProjects}
+          isArchiving={isArchiving}
+          isDeleting={isDeleting}
+          onEdit={setEditingProject}
+          onArchive={handleArchiveProject}
+          onDelete={handleDeleteProject}
+        />
       )}
     </div>
   );

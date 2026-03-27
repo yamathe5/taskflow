@@ -2,9 +2,25 @@ import type { Project } from '../types/project.types';
 
 type ProjectTableProps = {
   projects: Project[];
+  canManageProjects: boolean;
+  canDeleteProjects: boolean;
+  isArchiving: boolean;
+  isDeleting: boolean;
+  onEdit: (project: Project) => void;
+  onArchive: (projectId: number) => Promise<void>;
+  onDelete: (projectId: number) => Promise<void>;
 };
 
-export function ProjectTable({ projects }: ProjectTableProps) {
+export function ProjectTable({
+  projects,
+  canManageProjects,
+  canDeleteProjects,
+  isArchiving,
+  isDeleting,
+  onEdit,
+  onArchive,
+  onDelete,
+}: ProjectTableProps) {
   return (
     <div className="table-card">
       <table className="data-table">
@@ -15,6 +31,7 @@ export function ProjectTable({ projects }: ProjectTableProps) {
             <th>Status</th>
             <th>Owner ID</th>
             <th>Description</th>
+            {(canManageProjects || canDeleteProjects) && <th>Actions</th>}
           </tr>
         </thead>
 
@@ -36,6 +53,43 @@ export function ProjectTable({ projects }: ProjectTableProps) {
               </td>
               <td>{project.ownerId}</td>
               <td>{project.description ?? 'No description'}</td>
+              {(canManageProjects || canDeleteProjects) && (
+                <td className="table-actions">
+                  {canManageProjects && (
+                    <>
+                      <button
+                        className="button button--small button--secondary"
+                        type="button"
+                        onClick={() => onEdit(project)}
+                      >
+                        Edit
+                      </button>
+
+                      {project.status !== 'archived' && (
+                        <button
+                          className="button button--small"
+                          type="button"
+                          disabled={isArchiving}
+                          onClick={() => void onArchive(project.id)}
+                        >
+                          Archive
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {canDeleteProjects && (
+                    <button
+                      className="button button--small button--danger"
+                      type="button"
+                      disabled={isDeleting}
+                      onClick={() => void onDelete(project.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
