@@ -149,7 +149,13 @@ cd frontend
 npm install
 ```
 
-3. Start the development server:
+2. Install dependencies:
+
+```bash
+cp .env.example .env
+```
+
+4. Start the development server:
 
 ```bash
 npm run dev
@@ -158,7 +164,7 @@ npm run dev
 Frontend URL:
 
 ```text
-http://localhost:5173
+http://localhost:5173/login
 ```
 
 ## Seeder Credentials
