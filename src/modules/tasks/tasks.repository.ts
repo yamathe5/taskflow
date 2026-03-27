@@ -61,6 +61,54 @@ export class TasksRepository {
     return result.rows;
   }
 
+  async findByAssignedTo(userId: number): Promise<TaskRow[]> {
+    const query = `
+      SELECT
+        id,
+        title,
+        description,
+        status,
+        priority,
+        project_id AS "projectId",
+        assigned_to AS "assignedTo",
+        created_by AS "createdBy",
+        due_date AS "dueDate",
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM tasks
+      WHERE assigned_to = $1
+      ORDER BY id ASC;
+    `;
+
+    const result: QueryResult<TaskRow> = await pool.query(query, [userId]);
+    return result.rows;
+  }
+
+  async findByProjectOwnerId(ownerId: number): Promise<TaskRow[]> {
+    const query = `
+      SELECT
+        t.id,
+        t.title,
+        t.description,
+        t.status,
+        t.priority,
+        t.project_id AS "projectId",
+        t.assigned_to AS "assignedTo",
+        t.created_by AS "createdBy",
+        t.due_date AS "dueDate",
+        t.created_at AS "createdAt",
+        t.updated_at AS "updatedAt"
+      FROM tasks t
+      INNER JOIN projects p
+        ON p.id = t.project_id
+      WHERE p.owner_id = $1
+      ORDER BY t.id ASC;
+    `;
+
+    const result: QueryResult<TaskRow> = await pool.query(query, [ownerId]);
+    return result.rows;
+  }
+
   async findById(id: number): Promise<TaskRow | null> {
     const query = `
       SELECT

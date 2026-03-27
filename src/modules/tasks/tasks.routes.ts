@@ -24,19 +24,19 @@ tasksRouter.get(
 );
 tasksRouter.post(
   '/',
-  authorize('admin', 'project_manager'),
+  authorize('admin', 'project_manager', 'developer'),
   validate(createTaskSchema),
   tasksController.createTask,
 );
 tasksRouter.patch(
   '/:id',
-  authorize('admin', 'project_manager'),
+  authorize('admin', 'project_manager', 'developer'),
   validate(updateTaskSchema),
   tasksController.updateTask,
 );
 tasksRouter.patch(
   '/:id/status',
-  authorize('admin', 'project_manager'),
+  authorize('admin', 'project_manager', 'developer'),
   validate(updateTaskStatusSchema),
   tasksController.updateTaskStatus,
 );

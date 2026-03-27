@@ -10,6 +10,12 @@ import { TasksRepository, type TaskRow } from './tasks.repository';
 
 type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
 type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+type UserRole = 'admin' | 'project_manager' | 'developer';
+
+type CurrentUser = {
+  userId: number;
+  role: UserRole;
+};
 
 export type PublicTask = {
   id: number;
@@ -39,26 +45,47 @@ export class TasksService {
     private readonly usersRepository: UsersRepository,
   ) {}
 
-  async listTasks(): Promise<PublicTask[]> {
-    const tasks = await this.tasksRepository.findAll();
+  async listTasks(currentUser: CurrentUser): Promise<PublicTask[]> {
+    let tasks: TaskRow[] = [];
+
+    if (currentUser.role === 'admin') {
+      tasks = await this.tasksRepository.findAll();
+    } else if (currentUser.role === 'project_manager') {
+      tasks = await this.tasksRepository.findByProjectOwnerId(currentUser.userId);
+    } else {
+      tasks = await this.tasksRepository.findByAssignedTo(currentUser.userId);
+    }
+
     return tasks.map((task) => this.toPublicTask(task));
   }
 
-  async getTaskById(id: number): Promise<PublicTask> {
+  async getTaskById(id: number, currentUser: CurrentUser): Promise<PublicTask> {
     const task = await this.tasksRepository.findById(id);
 
     if (!task) {
       throw new AppError('Task not found', 404);
     }
 
+    await this.assertTaskAccess(task, currentUser);
+
     return this.toPublicTask(task);
   }
 
-  async createTask(input: CreateTaskInput, createdBy: number): Promise<PublicTask> {
+  async createTask(input: CreateTaskInput, currentUser: CurrentUser): Promise<PublicTask> {
     const project = await this.projectsRepository.findById(input.projectId);
 
     if (!project) {
       throw new AppError('Project not found', 404);
+    }
+
+    if (currentUser.role === 'project_manager' && Number(project.ownerId) !== currentUser.userId) {
+      throw new AppError('You do not have permission to create tasks in this project', 403);
+    }
+
+    if (currentUser.role === 'developer') {
+      if (!input.assignedTo || input.assignedTo !== currentUser.userId) {
+        throw new AppError('Developers can only create tasks assigned to themselves', 403);
+      }
     }
 
     if (input.assignedTo !== undefined && input.assignedTo !== null) {
@@ -75,19 +102,25 @@ export class TasksService {
       priority: input.priority ?? 'medium',
       projectId: input.projectId,
       assignedTo: input.assignedTo ?? null,
-      createdBy,
+      createdBy: currentUser.userId,
       dueDate: input.dueDate ? new Date(input.dueDate) : null,
     });
 
     return this.toPublicTask(task);
   }
 
-  async updateTask(id: number, input: UpdateTaskInput): Promise<PublicTask> {
+  async updateTask(
+    id: number,
+    input: UpdateTaskInput,
+    currentUser: CurrentUser,
+  ): Promise<PublicTask> {
     const existingTask = await this.tasksRepository.findById(id);
 
     if (!existingTask) {
       throw new AppError('Task not found', 404);
     }
+
+    await this.assertTaskEditAccess(existingTask, currentUser);
 
     if (input.assignedTo !== undefined && input.assignedTo !== null) {
       const assignedUser = await this.usersRepository.findActiveById(input.assignedTo);
@@ -97,28 +130,48 @@ export class TasksService {
       }
     }
 
+    if (
+      currentUser.role === 'developer' &&
+      input.assignedTo !== undefined &&
+      input.assignedTo !== currentUser.userId
+    ) {
+      throw new AppError('Developers can only keep tasks assigned to themselves', 403);
+    }
+
     const updatedTask = await this.tasksRepository.updateTask({
       id,
       title: input.title?.trim() ?? existingTask.title,
       description: input.description !== undefined ? input.description : existingTask.description,
       priority: input.priority ?? existingTask.priority,
-      assignedTo: input.assignedTo !== undefined ? input.assignedTo : Number(existingTask.assignedTo) || null,
-      dueDate: input.dueDate !== undefined
-        ? input.dueDate
-          ? new Date(input.dueDate)
-          : null
-        : existingTask.dueDate,
+      assignedTo:
+        input.assignedTo !== undefined
+          ? input.assignedTo
+          : existingTask.assignedTo !== null
+            ? Number(existingTask.assignedTo)
+            : null,
+      dueDate:
+        input.dueDate !== undefined
+          ? input.dueDate
+            ? new Date(input.dueDate)
+            : null
+          : existingTask.dueDate,
     });
 
     return this.toPublicTask(updatedTask);
   }
 
-  async updateTaskStatus(id: number, input: UpdateTaskStatusInput): Promise<PublicTask> {
+  async updateTaskStatus(
+    id: number,
+    input: UpdateTaskStatusInput,
+    currentUser: CurrentUser,
+  ): Promise<PublicTask> {
     const existingTask = await this.tasksRepository.findById(id);
 
     if (!existingTask) {
       throw new AppError('Task not found', 404);
     }
+
+    await this.assertTaskStatusAccess(existingTask, currentUser);
 
     if (existingTask.status === input.status) {
       throw new AppError('Task already has this status', 400);
@@ -142,17 +195,86 @@ export class TasksService {
     return this.toPublicTask(updatedTask);
   }
 
-  async deleteTask(id: number): Promise<void> {
+  async deleteTask(id: number, currentUser: CurrentUser): Promise<void> {
     const existingTask = await this.tasksRepository.findById(id);
 
     if (!existingTask) {
       throw new AppError('Task not found', 404);
     }
 
+    if (currentUser.role === 'developer') {
+      throw new AppError('You do not have permission to delete tasks', 403);
+    }
+
+    if (currentUser.role === 'project_manager') {
+      const project = await this.projectsRepository.findById(Number(existingTask.projectId));
+
+      if (!project || Number(project.ownerId) !== currentUser.userId) {
+        throw new AppError('You do not have permission to delete this task', 403);
+      }
+    }
+
     const deleted = await this.tasksRepository.deleteTask(id);
 
     if (!deleted) {
       throw new AppError('Task could not be deleted', 400);
+    }
+  }
+
+  private async assertTaskAccess(task: TaskRow, currentUser: CurrentUser): Promise<void> {
+    if (currentUser.role === 'admin') {
+      return;
+    }
+
+    if (currentUser.role === 'developer') {
+      if (task.assignedTo === null || Number(task.assignedTo) !== currentUser.userId) {
+        throw new AppError('You do not have permission to access this task', 403);
+      }
+      return;
+    }
+
+    const project = await this.projectsRepository.findById(Number(task.projectId));
+
+    if (!project || Number(project.ownerId) !== currentUser.userId) {
+      throw new AppError('You do not have permission to access this task', 403);
+    }
+  }
+
+  private async assertTaskEditAccess(task: TaskRow, currentUser: CurrentUser): Promise<void> {
+    if (currentUser.role === 'admin') {
+      return;
+    }
+
+    if (currentUser.role === 'developer') {
+      if (task.assignedTo === null || Number(task.assignedTo) !== currentUser.userId) {
+        throw new AppError('You do not have permission to edit this task', 403);
+      }
+      return;
+    }
+
+    const project = await this.projectsRepository.findById(Number(task.projectId));
+
+    if (!project || Number(project.ownerId) !== currentUser.userId) {
+      throw new AppError('You do not have permission to edit this task', 403);
+    }
+  }
+
+  private async assertTaskStatusAccess(task: TaskRow, currentUser: CurrentUser): Promise<void> {
+    if (currentUser.role === 'admin') {
+      return;
+    }
+
+    if (currentUser.role === 'developer') {
+      if (task.assignedTo === null || Number(task.assignedTo) !== currentUser.userId) {
+        throw new AppError('You do not have permission to change this task status', 403);
+      }
+      return;
+    }
+
+    const project = await this.projectsRepository.findById(Number(task.projectId));
+
+    if (!project || Number(project.ownerId) !== currentUser.userId) {
+      throw new AppError('You do not have permission to change this task status', 403);
     }
   }
 
