@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { AppError } from '../../shared/errors/app-error';
 import { asyncHandler } from '../../shared/utils/async-handler';
 import { usersService } from './users.service';
 
@@ -11,6 +12,44 @@ class UsersController {
       success: true,
       message: 'Users retrieved successfully',
       data: users,
+    });
+  });
+
+  listAssignableUsers = asyncHandler(async (_req: Request, res: Response) => {
+    const users = await usersService.listDevelopers();
+
+    res.status(200).json({
+      success: true,
+      message: 'Assignable users retrieved successfully',
+      data: users,
+    });
+  });
+
+  getMyProfile = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
+    const user = await usersService.getMyProfile(req.user.userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile retrieved successfully',
+      data: user,
+    });
+  });
+
+  updateMyProfile = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
+    const updatedUser = await usersService.updateMyProfile(req.user.userId, req.body);
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: updatedUser,
     });
   });
 
@@ -37,22 +76,16 @@ class UsersController {
   });
 
   softDeleteUser = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication is required', 401);
+    }
+
     const userId = Number(req.params.id);
-    await usersService.softDeleteUser(userId);
+    await usersService.softDeleteUser(userId, req.user.userId);
 
     res.status(200).json({
       success: true,
       message: 'User deleted successfully',
-    });
-  });
-  
-listAssignableUsers = asyncHandler(async (_req: Request, res: Response) => {
-    const users = await usersService.listDevelopers();
-
-    res.status(200).json({
-      success: true,
-      message: 'Assignable users retrieved successfully',
-      data: users,
     });
   });
 }

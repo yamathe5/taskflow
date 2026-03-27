@@ -4,11 +4,18 @@ import { authenticate } from '../../shared/middleware/auth.middleware';
 import { authorize } from '../../shared/middleware/role.middleware';
 import { validate } from '../../shared/middleware/validate.middleware';
 import { usersController } from './users.controller';
-import { updateUserSchema, userIdParamSchema } from './users.schema';
+import {
+  updateMyProfileSchema,
+  updateUserSchema,
+  userIdParamSchema,
+} from './users.schema';
 
 const usersRouter = Router();
 
 usersRouter.use(authenticate);
+
+usersRouter.get('/me', usersController.getMyProfile);
+usersRouter.patch('/me', validate(updateMyProfileSchema), usersController.updateMyProfile);
 
 usersRouter.get(
   '/assignable',

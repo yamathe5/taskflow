@@ -1,5 +1,5 @@
 import { AppError } from '../../shared/errors/app-error';
-import type { UpdateUserInput } from './users.schema';
+import type { UpdateMyProfileInput, UpdateUserInput } from './users.schema';
 import { UsersRepository, type UserRow } from './users.repository';
 
 type UserRole = 'admin' | 'project_manager' | 'developer';
@@ -22,8 +22,25 @@ export class UsersService {
     return users.map((user) => this.toPublicUser(user));
   }
 
+  async listDevelopers(): Promise<PublicUser[]> {
+    const users = await this.usersRepository.findAllActive();
+    return users
+      .filter((user) => user.role === 'developer')
+      .map((user) => this.toPublicUser(user));
+  }
+
   async getUserById(id: number): Promise<PublicUser> {
     const user = await this.usersRepository.findActiveById(id);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    return this.toPublicUser(user);
+  }
+
+  async getMyProfile(userId: number): Promise<PublicUser> {
+    const user = await this.usersRepository.findActiveById(userId);
 
     if (!user) {
       throw new AppError('User not found', 404);
@@ -44,7 +61,11 @@ export class UsersService {
     if (normalizedEmail && normalizedEmail !== existingUser.email) {
       const userWithSameEmail = await this.usersRepository.findByEmail(normalizedEmail);
 
-      if (userWithSameEmail && userWithSameEmail.deletedAt === null && Number(userWithSameEmail.id) !== id) {
+      if (
+        userWithSameEmail &&
+        userWithSameEmail.deletedAt === null &&
+        Number(userWithSameEmail.id) !== id
+      ) {
         throw new AppError('Email is already in use', 409);
       }
 
@@ -65,11 +86,52 @@ export class UsersService {
     return this.toPublicUser(updatedUser);
   }
 
-  async softDeleteUser(id: number): Promise<void> {
+  async updateMyProfile(userId: number, input: UpdateMyProfileInput): Promise<PublicUser> {
+    const existingUser = await this.usersRepository.findActiveById(userId);
+
+    if (!existingUser) {
+      throw new AppError('User not found', 404);
+    }
+
+    const normalizedEmail = input.email?.trim().toLowerCase();
+
+    if (normalizedEmail && normalizedEmail !== existingUser.email) {
+      const userWithSameEmail = await this.usersRepository.findByEmail(normalizedEmail);
+
+      if (
+        userWithSameEmail &&
+        userWithSameEmail.deletedAt === null &&
+        Number(userWithSameEmail.id) !== userId
+      ) {
+        throw new AppError('Email is already in use', 409);
+      }
+
+      if (userWithSameEmail && userWithSameEmail.deletedAt !== null) {
+        throw new AppError('Email belongs to a soft-deleted user', 409);
+      }
+    }
+
+    const updatedUser = await this.usersRepository.updateUser({
+      id: userId,
+      name: input.name?.trim() ?? existingUser.name,
+      email: normalizedEmail ?? existingUser.email,
+      role: existingUser.role,
+      avatarUrl:
+        input.avatarUrl !== undefined ? input.avatarUrl : existingUser.avatarUrl,
+    });
+
+    return this.toPublicUser(updatedUser);
+  }
+
+  async softDeleteUser(id: number, currentUserId?: number): Promise<void> {
     const user = await this.usersRepository.findActiveById(id);
 
     if (!user) {
       throw new AppError('User not found', 404);
+    }
+
+    if (currentUserId && id === currentUserId) {
+      throw new AppError('You cannot delete your own account', 400);
     }
 
     const deleted = await this.usersRepository.softDeleteUser(id);
@@ -89,13 +151,6 @@ export class UsersService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
-  }
-
-  async listDevelopers(): Promise<PublicUser[]> {
-    const users = await this.usersRepository.findAllActive();
-    return users
-      .filter((user) => user.role === 'developer')
-      .map((user) => this.toPublicUser(user));
   }
 }
 
