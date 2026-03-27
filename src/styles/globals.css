@@ -8,6 +8,7 @@
   box-sizing: border-box;
 }
 
+
 body {
   margin: 0;
   min-width: 320px;
@@ -155,4 +156,49 @@ input {
 
 .app-shell__content {
   padding: 24px;
+}
+
+/* Users List */
+
+.page-section {
+  display: grid;
+  gap: 20px;
+}
+
+.page-section__header h2 {
+  margin: 0 0 8px;
+}
+
+.page-section__header p {
+  margin: 0;
+  color: #4b5563;
+}
+
+.table-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 14px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table th {
+  font-size: 14px;
+  color: #374151;
+}
+
+.data-table td {
+  font-size: 14px;
 }
